@@ -8,7 +8,7 @@
 #pragma region Định nghĩa từ khóa
 #define DHTTYPE DHT11
 
-#define Soil_Sensor A0
+#define Soil_Sensor A1
 #define DHTPIN 2
 
 #define Button_mode 4
@@ -24,7 +24,7 @@
 
 #pragma region Khởi tạo
 // Khởi tạo màn hình LCD 16x2 và giao tiếp i2c ở địa chỉ 0x3F
-LiquidCrystal_I2C lcd(0x3F,16,2); 
+LiquidCrystal_I2C lcd(0x27,16,2); 
 
 // Khởi tạo cảm biến DHT
 DHT dht(DHTPIN, DHTTYPE);
@@ -41,7 +41,7 @@ float hum = 0, temp = 0;
 // Khởi tạo biến lưu độ ẩm đất và % độ ẩm đất
 int value = 0, soil_moisture = 0;
 
-// Lưu trạng thái đầu ra: mode, đèn, quạt, máy bơm
+// Lưu trạng thái đầu ra: đèn, quạt, máy bơm, mode
 // 0 - bật
 // 1 - tắt
 // Với mode: 0 - manual; 1 - auto
@@ -72,7 +72,7 @@ void setup()
     pinMode(INPUT_Digital[i], INPUT_PULLUP);
   }
 
-  for (byte k = 0; k < 4; k++)
+  for (byte k = 0; k < 3; k++)
   {
     pinMode(OUTPUT_PIN[k], OUTPUT);
     digitalWrite(OUTPUT_PIN[k], state[k]);
@@ -92,11 +92,11 @@ void setup()
 void loop() 
 {
   // put your main code here, to run repeatedly:
-  // ReadSensor();
+  ReadSensor();
   
-  // ReadButton();
+  ReadButton();
 
-  // Process();
+  Process();
   
   Display();
 
@@ -105,7 +105,7 @@ void loop()
 void ReadSensor()
 {
   // Đợi một khoảng thời gian giữa các lần đọc dữ liệu
-  if ((unsigned long)(millis() - time_sensor) > 20000)
+  if ((unsigned long)(millis() - time_sensor) > 1000)
   {
     time_sensor = millis();
 
@@ -144,14 +144,30 @@ void ReadButton()
 
 void Process()
 {
-  if(state[0] == 0)
+  if(state[3] == 0)
   {
-    for (byte i = 1; i < 4; i++)
+    for (byte i = 0; i < 3; i++)
       digitalWrite(OUTPUT_PIN[i], state[i]);
   }
   else
   {
+    // Nếu nhiệt độ dưới 25 độ C, bật đèn đến khi nhiệt độ lên trên 30 độ thì tắt
+    if(temp < 25)
+      digitalWrite(Light, HIGH);
+    if(temp > 30)
+      digitalWrite(Light, LOW);
 
+    // Nếu nhiệt độ trên 40 độ C, bật quạt đến khi nhiệt độ dưới 30 độ thì tắt
+    if(temp > 40)
+      digitalWrite(Fan, HIGH);
+    if(temp <= 30)
+      digitalWrite(Fan, LOW);
+    
+    // Nếu độ ẩm đất dưới 60%, bơm nước đến khi độ ẩm lên trên 75% thì tắt
+    if(soil_moisture < 60)
+      digitalWrite(Fan, HIGH);
+    if(soil_moisture > 75)
+      digitalWrite(Fan, LOW);
   }
 
 }
@@ -159,9 +175,23 @@ void Process()
 void Display()
 {
   lcd.setCursor(0,0);
-  if(state[0] == 0)
-  {
-    lcd.print("Che do:Bang tay");
-  }
+  if(state[3] == 0)
+    lcd.print("Mode: manual");
+  else
+    lcd.print("Mode:   auto");
 
+  lcd.setCursor(0,1);
+  lcd.print(int(temp));
+  lcd.setCursor(2,1);
+  lcd.print("C");
+  lcd.setCursor(4,1);
+  lcd.print(int(hum));
+  lcd.setCursor(6,1);
+  lcd.print("%");
+  lcd.setCursor(8,1);
+  lcd.print("Dat:");
+  lcd.setCursor(12,1);
+  lcd.print(int(soil_moisture));
+  lcd.setCursor(15,1);
+  lcd.print("%");
 }
