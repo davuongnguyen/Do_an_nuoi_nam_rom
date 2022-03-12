@@ -2,7 +2,7 @@
 #include "DHT.h"
 #include "Adafruit_Sensor.h"
 #include "DHT_U.h"
-#include "Wire.h" 
+#include "Wire.h"
 #include "LiquidCrystal_I2C.h"
 
 #pragma region Định nghĩa từ khóa
@@ -24,14 +24,13 @@
 
 #pragma region Khởi tạo
 // Khởi tạo màn hình LCD 16x2 và giao tiếp i2c ở địa chỉ 0x3F
-LiquidCrystal_I2C lcd(0x27,16,2); 
+LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 // Khởi tạo cảm biến DHT
 DHT dht(DHTPIN, DHTTYPE);
 
 const byte INPUT_Digital[] = {Button_mode, Button_light, Button_fan, Button_pump};
 const byte OUTPUT_PIN[] = {Light, Fan, Pump};
-
 
 unsigned long time_Reconnect = 0, time_sensor = 0, time_button = 0;
 
@@ -46,6 +45,11 @@ int value = 0, soil_moisture = 0;
 // 1 - tắt
 // Với mode: 0 - manual; 1 - auto
 byte state[] = {0, 0, 0, 0};
+
+// Biến tạm lưu trạng thái đọc cảm biến.
+// p = 1: đã đọc cảm biến
+// p = 0: chưa đọc cảm biến
+byte p = 0;
 
 #pragma endregion
 
@@ -64,7 +68,7 @@ void Display();
 
 #pragma endregion
 
-void setup() 
+void setup()
 {
   // put your setup code here, to run once:
   for (byte i = 0; i < 4; i++)
@@ -78,28 +82,27 @@ void setup()
     digitalWrite(OUTPUT_PIN[k], state[k]);
   }
 
-  //Thiết lập tốc độ baud rate cho serial monitor
+  // Thiết lập tốc độ baud rate cho serial monitor
   Serial.begin(115200);
 
   // Khởi tạo LCD
-  lcd.init();  
-  lcd.backlight(); 
+  lcd.init();
+  lcd.backlight();
 
   // Bắt đầu thuật toán giải mã dữ liệu từ cảm biến dth
   dht.begin();
 }
 
-void loop() 
+void loop()
 {
   // put your main code here, to run repeatedly:
   ReadSensor();
-  
+
   ReadButton();
 
   Process();
-  
-  Display();
 
+  Display();
 }
 
 void ReadSensor()
@@ -121,8 +124,11 @@ void ReadSensor()
     }
 
     // Đọc dữ liệu từ cảm biến độ ẩm đất
-    value = analogRead(Soil_Sensor);     // Ta sẽ đọc giá trị hiệu điện thế của cảm biến
+    value = analogRead(Soil_Sensor); // Ta sẽ đọc giá trị hiệu điện thế của cảm biến
     soil_moisture = map(value, 0, 1023, 0, 100);
+
+    // Khi đọc xong dư liệu từ cảm biến, set p = 1.
+    p = 1;
   }
 }
 
@@ -135,6 +141,10 @@ void ReadButton()
   {
     if (digitalRead(INPUT_Digital[i]) == LOW)
     {
+      if (i == 3)
+      {
+        p = 1;
+      }
       Serial.println("Đã nhấn ...");
       state[i] = !state[i];
       delay(500);
@@ -144,54 +154,65 @@ void ReadButton()
 
 void Process()
 {
-  if(state[3] == 0)
+  if (state[3] == 0)
   {
     for (byte i = 0; i < 3; i++)
       digitalWrite(OUTPUT_PIN[i], state[i]);
   }
   else
   {
-    // Nếu nhiệt độ dưới 25 độ C, bật đèn đến khi nhiệt độ lên trên 30 độ thì tắt
-    if(temp < 25)
+    // Nếu nhiệt độ dưới 30 độ C, bật đèn đến khi nhiệt độ lên trên 35 độ thì tắt
+    if (temp < 30)
+    {
       digitalWrite(Light, HIGH);
-    if(temp > 30)
+    }
+    else if (temp >= 35)
+    {
       digitalWrite(Light, LOW);
+    }
 
-    // Nếu nhiệt độ trên 40 độ C, bật quạt đến khi nhiệt độ dưới 30 độ thì tắt
-    if(temp > 40)
+    // Nếu nhiệt độ trên 40 độ C, bật quạt đến khi nhiệt độ dưới 35 độ thì tắt
+    if (temp > 40)
+    {
       digitalWrite(Fan, HIGH);
-    if(temp <= 30)
+    }
+    else if (temp <= 35)
+    {
       digitalWrite(Fan, LOW);
-    
+    }
+
     // Nếu độ ẩm đất dưới 60%, bơm nước đến khi độ ẩm lên trên 75% thì tắt
-    if(soil_moisture < 60)
-      digitalWrite(Fan, HIGH);
-    if(soil_moisture > 75)
-      digitalWrite(Fan, LOW);
+    if (soil_moisture < 60)
+      digitalWrite(Pump, HIGH);
+    else if (soil_moisture >= 70)
+      digitalWrite(Pump, LOW);
   }
-
 }
 
 void Display()
 {
-  lcd.setCursor(0,0);
-  if(state[3] == 0)
-    lcd.print("Mode: manual");
-  else
-    lcd.print("Mode:   auto");
+  if (p == 1)
+  {
+    lcd.setCursor(0, 0);
+    if (state[3] == 0)
+      lcd.print("Mode: manual");
+    else
+      lcd.print("Mode:   auto");
 
-  lcd.setCursor(0,1);
-  lcd.print(int(temp));
-  lcd.setCursor(2,1);
-  lcd.print("C");
-  lcd.setCursor(4,1);
-  lcd.print(int(hum));
-  lcd.setCursor(6,1);
-  lcd.print("%");
-  lcd.setCursor(8,1);
-  lcd.print("Dat:");
-  lcd.setCursor(12,1);
-  lcd.print(int(soil_moisture));
-  lcd.setCursor(15,1);
-  lcd.print("%");
+    lcd.setCursor(0, 1);
+    lcd.print(int(temp));
+    lcd.setCursor(2, 1);
+    lcd.print("C");
+    lcd.setCursor(4, 1);
+    lcd.print(int(hum));
+    lcd.setCursor(6, 1);
+    lcd.print("%");
+    lcd.setCursor(8, 1);
+    lcd.print("Dat:");
+    lcd.setCursor(12, 1);
+    lcd.print(int(soil_moisture));
+    lcd.setCursor(15, 1);
+    lcd.print("%");
+    p = 0;
+  }
 }
