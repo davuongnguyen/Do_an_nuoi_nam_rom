@@ -34,9 +34,7 @@
 
 - Về phần hiển thị, mô hình sử dụng module LCD + I2C (tối thiểu 16x2).
 
-  ![image-20220312180044396](C:\Users\davuo\AppData\Roaming\Typora\typora-user-images\image-20220312180044396.png)
-
-
+  ![Picture](D:\User\Source code\Embedded\Project\Do_an_nuoi_nam_rom\Schematic\Picture.png)
 
 ### Các vấn đề lỗi có thể gặp:
 
