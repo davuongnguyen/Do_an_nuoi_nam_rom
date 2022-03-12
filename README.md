@@ -34,7 +34,6 @@
 
 - Về phần hiển thị, mô hình sử dụng module LCD + I2C (tối thiểu 16x2).
 
-  ![Picture](D:\User\Source code\Embedded\Project\Do_an_nuoi_nam_rom\Schematic\Picture.png)
 
 ### Các vấn đề lỗi có thể gặp:
 
