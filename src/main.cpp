@@ -46,10 +46,10 @@ int value = 0, soil_moisture = 0;
 // Với mode: 0 - manual; 1 - auto
 byte state[] = {0, 0, 0, 0};
 
-// Biến tạm lưu trạng thái đọc cảm biến.
-// p = 1: đã đọc cảm biến
-// p = 0: chưa đọc cảm biến
-byte p = 0;
+// Biến tạm đánh dấu sự thay đổi
+byte p = 1, q = 1;
+float v_hum = 0, v_temp = 0;
+int v_soil_moisture = 0;
 
 #pragma endregion
 
@@ -65,6 +65,12 @@ void Process();
 
 // Hiển thị lên màn hình LCD
 void Display();
+
+// Đặt vị trí và in ra LCD giá trị val
+// val: giá trị cần in
+// cursor: vị trí đầu tiên
+// n: số chữ số
+void Set_Cursor(int val, byte cursor, byte n);
 
 #pragma endregion
 
@@ -125,10 +131,16 @@ void ReadSensor()
 
     // Đọc dữ liệu từ cảm biến độ ẩm đất
     value = analogRead(Soil_Sensor); // Ta sẽ đọc giá trị hiệu điện thế của cảm biến
-    soil_moisture = map(value, 0, 1023, 0, 100);
+    soil_moisture = map(value, 0, 1023, 100, 0);
 
-    // Khi đọc xong dư liệu từ cảm biến, set p = 1.
-    p = 1;
+    // Khi đọc xong dữ liệu từ cảm biến, set q = 1 nếu có sự thay đổi thông số
+    if (hum != v_hum || temp != v_temp || soil_moisture != v_soil_moisture)
+    {
+      v_hum = hum;
+      v_temp = temp;
+      v_soil_moisture = soil_moisture;
+      q = 1;
+    }
   }
 }
 
@@ -198,21 +210,63 @@ void Display()
       lcd.print("Mode: manual");
     else
       lcd.print("Mode:   auto");
-
-    lcd.setCursor(0, 1);
-    lcd.print(int(temp));
+    p = 0;
+  }
+  if (q == 1)
+  {
+    Set_Cursor(int(temp), 0, 2);
     lcd.setCursor(2, 1);
     lcd.print("C");
-    lcd.setCursor(4, 1);
-    lcd.print(int(hum));
+
+    Set_Cursor(int(hum), 4, 2);
     lcd.setCursor(6, 1);
     lcd.print("%");
     lcd.setCursor(8, 1);
+
     lcd.print("Dat:");
-    lcd.setCursor(12, 1);
-    lcd.print(int(soil_moisture));
+    Set_Cursor(int(soil_moisture), 12, 3);
     lcd.setCursor(15, 1);
     lcd.print("%");
-    p = 0;
+  }
+}
+
+void Set_Cursor(int val, byte cursor, byte n)
+{
+  if (n == 2)
+  {
+    if (val < 10)
+    {
+      lcd.setCursor(cursor, 1);
+      lcd.print("0");
+      lcd.setCursor(cursor + 1, 1);
+      lcd.print(val);
+    }
+    else if (val >= 10)
+    {
+      lcd.setCursor(cursor, 1);
+      lcd.print(val);
+    }
+  }
+  else if (n == 3)
+  {
+    if (val < 10)
+    {
+      lcd.setCursor(cursor, 1);
+      lcd.print("00");
+      lcd.setCursor(cursor + 2, 1);
+      lcd.print(val);
+    }
+    else if (val >= 10 && val < 100)
+    {
+      lcd.setCursor(cursor, 1);
+      lcd.print("0");
+      lcd.setCursor(cursor + 1, 1);
+      lcd.print(val);
+    }
+    else
+    {
+      lcd.setCursor(cursor, 1);
+      lcd.print(val);
+    }
   }
 }
